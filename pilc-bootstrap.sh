@@ -2,7 +2,7 @@
 #
 # PiLC bootstrap
 #
-# Copyright 2016-2020 Michael Buesch <m@bues.ch>
+# Copyright 2016-2021 Michael Buesch <m@bues.ch>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,10 +21,11 @@
 
 basedir="$(dirname "$0")"
 [ "$(echo "$basedir" | cut -c1)" = '/' ] || basedir="$PWD/$basedir"
+basedir="$(readlink -e "$basedir")"
+[ -n "$basedir" ] || { echo "Failed to canonicalize base directory." >&2; exit 1; }
 
-# The repository root is basedir.
-basedir="$basedir/.."
 
+AWLSIM_MIRROR="https://git.bues.ch/git/awlsim.git"
 
 DEFAULT_SUITE=buster
 MAIN_MIRROR_32="http://mirrordirector.raspbian.org/raspbian/"
@@ -39,12 +40,12 @@ KEYRING_TGZ_SHA256="fdf50f775b60901a2783f21a6362e2bf5ee6203983e884940b163faa1293
 
 PPL_VERSION="0.1.1"
 PPL_FILE="ppl_v$PPL_VERSION.zip"
-PPL_MIRROR="./libs/pixtend/v1/ppl/$PPL_FILE"
+PPL_PATH="libs/pixtend/v1/ppl/$PPL_FILE"
 PPL_SHA256="103edcdbc377f8b478fcbc89117cbad143500c611cb714568f55513cece220d4"
 
 PPL2_VERSION="0.1.3"
 PPL2_FILE="pplv2_v$PPL2_VERSION.zip"
-PPL2_MIRROR="./libs/pixtend/v2/pplv2/$PPL2_FILE"
+PPL2_PATH="libs/pixtend/v2/pplv2/$PPL2_FILE"
 PPL2_SHA256="cab6e7cd9062ffbf81a8f570ea0cad663addd8fe22e31cb75e887ae89e425651"
 
 
@@ -156,10 +157,10 @@ download()
 
 	info "Downloading $mirror..."
 	rm -f "$target"
-	if printf '%s' "$mirror" | grep -qe '^\./'; then
-		# "mirror" starts with ./
-		# This is a local file in the repository.
-		cp "$basedir/$mirror" "$target" || die "Failed to fetch $mirror"
+	if printf '%s' "$mirror" | grep -qEe '^\./|^\../|^/'; then
+		# "mirror" starts with ./ ../ or /
+		# This is a local file.
+		cp "$mirror" "$target" || die "Failed to fetch $mirror"
 	else
 		# Download the file
 		wget -O "$target" "$mirror" || die "Failed to fetch $mirror"
@@ -272,7 +273,7 @@ pilc_bootstrap_first_stage()
 
 	info "Downloading and extracting keys..."
 	do_install -o root -g root -m 644 \
-		"$basedir_pilc/CF8A1AF502A2AA2D763BAE7E82B129927FA3303E.gpg" \
+		"$basedir/keys/CF8A1AF502A2AA2D763BAE7E82B129927FA3303E.gpg" \
 		"$opt_target_dir/tmp/"
 	if [ $opt_bit -eq 32 ]; then
 		download "$opt_target_dir/tmp/$KEYRING_TGZ_FILE" \
@@ -310,7 +311,7 @@ pilc_bootstrap_first_stage()
 
 	# Avoid the start of daemons during second stage.
 	do_install -o root -g root -m 755 \
-		"$basedir_pilc/templates/policy-rc.d" \
+		"$basedir/templates/policy-rc.d" \
 		"$opt_target_dir/usr/sbin/"
 
 	# Copy qemu.
@@ -325,22 +326,22 @@ pilc_bootstrap_first_stage()
 
 	info "Copying PiLC bootstrap script and templates..."
 	do_install -o root -g root -m 755 \
-		"$basedir_pilc/pilc-bootstrap.sh" \
+		"$basedir/pilc-bootstrap.sh" \
 		"$opt_target_dir/"
-	cp -r "$basedir_pilc/templates" "$opt_target_dir/tmp/" ||\
+	cp -r "$basedir/templates" "$opt_target_dir/tmp/" ||\
 		die "Failed to copy PiLC templates"
-	cp -r "$basedir_pilc/deb" "$opt_target_dir/tmp/" ||\
+	cp -r "$basedir/deb" "$opt_target_dir/tmp/" ||\
 		die "Failed to copy PiLC deb packages"
 
 	info "Checking out awlsim..."
 	local awlsim_dir="$opt_target_dir/tmp/awlsim"
-	local checkout_dir="$awlsim_dir/src"
+	local awlsim_checkout_dir="$awlsim_dir/src"
 	rm -rf "$awlsim_dir"
 	do_install -d -o root -g root -m 755 "$awlsim_dir"
-	git clone --no-checkout "$basedir/.git" "$checkout_dir" ||\
+	git clone --no-checkout "$AWLSIM_MIRROR" "$awlsim_checkout_dir" ||\
 		die "Failed to clone"
 	(
-		cd "$checkout_dir" ||\
+		cd "$awlsim_checkout_dir" ||\
 			die "Failed to cd"
 		git checkout "$opt_branch" ||\
 			die "Failed to check out branch."
@@ -354,10 +355,10 @@ pilc_bootstrap_first_stage()
 
 	# Fetch packages
 	download "$opt_target_dir/tmp/$PPL_FILE" \
-		 "$PPL_MIRROR" \
+		 "$awlsim_checkout_dir/$PPL_PATH" \
 		 "$PPL_SHA256"
 	download "$opt_target_dir/tmp/$PPL2_FILE" \
-		 "$PPL2_MIRROR" \
+		 "$awlsim_checkout_dir/$PPL2_PATH" \
 		 "$PPL2_SHA256"
 
 	# Second stage will mount a few filesystems.
@@ -870,10 +871,10 @@ pilc_bootstrap_third_stage()
 
 	info "Configuring boot..."
 	do_install -T -o root -g root -m 644 \
-		"$basedir_pilc/templates/boot_cmdline.txt" \
+		"$basedir/templates/boot_cmdline.txt" \
 		"$opt_target_dir/boot/cmdline.txt"
 	do_install -T -o root -g root -m 644 \
-		"$basedir_pilc/templates/boot_config.txt" \
+		"$basedir/templates/boot_config.txt" \
 		"$opt_target_dir/boot/config.txt"
 	if [ $opt_bit -eq 64 ]; then
 		sed -i -e 's/arm_64bit=0/arm_64bit=1/g' \
@@ -1029,13 +1030,6 @@ usage()
 	echo "                         generic runs on any Raspberry Pi 0-4."
 	echo "                         Default: generic"
 }
-
-# canonicalize basedir
-basedir="$(readlink -e "$basedir")"
-[ -n "$basedir" ] || die "Failed to canonicalize base directory."
-
-# Directory containing the PiLC bootstrapping files.
-basedir_pilc="$basedir/pilc"
 
 # Mountpoints. Will be umounted on cleanup.
 mp_shm=
