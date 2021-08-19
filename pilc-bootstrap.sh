@@ -27,7 +27,7 @@ basedir="$(readlink -e "$basedir")"
 
 AWLSIM_MIRROR="https://git.bues.ch/git/awlsim.git"
 
-DEFAULT_SUITE=buster
+DEFAULT_SUITE=bullseye
 MAIN_MIRROR_32="http://mirrordirector.raspbian.org/raspbian/"
 MAIN_MIRROR_ARCHIVE="http://archive.raspberrypi.org/debian/"
 MAIN_MIRROR_64="http://deb.debian.org/debian/"
@@ -480,8 +480,8 @@ EOF
 		cat > /etc/apt/sources.list <<EOF
 deb $MAIN_MIRROR_64 $opt_suite main contrib non-free
 #deb-src $MAIN_MIRROR_64 $opt_suite main contrib non-free
-deb $MAIN_MIRROR_64_SECURITY $opt_suite/updates main contrib non-free
-#deb-src $MAIN_MIRROR_64_SECURITY $opt_suite/updates main contrib non-free
+deb $MAIN_MIRROR_64_SECURITY $opt_suite-security main contrib non-free
+#deb-src $MAIN_MIRROR_64_SECURITY $opt_suite-security main contrib non-free
 deb $MAIN_MIRROR_64 $opt_suite-updates main contrib non-free
 #deb-src $MAIN_MIRROR_64 $opt_suite-updates main contrib non-free
 EOF
@@ -502,22 +502,18 @@ EOF
 		debian-keyring \
 		|| die "apt-get install keyrings failed"
 	cat >> /etc/apt/sources.list <<EOF
-deb $MAIN_MIRROR_ARCHIVE $opt_suite main ui
-#deb-src $MAIN_MIRROR_ARCHIVE $opt_suite main ui
+deb $MAIN_MIRROR_ARCHIVE $opt_suite main
+#deb-src $MAIN_MIRROR_ARCHIVE $opt_suite main
 EOF
 	[ $? -eq 0 ] || die "Failed to update sources.list"
-	apt-key add /tmp/CF8A1AF502A2AA2D763BAE7E82B129927FA3303E.gpg ||\
-		die "apt-key add failed"
+	do_install -o root -g root -m 644 \
+		/tmp/CF8A1AF502A2AA2D763BAE7E82B129927FA3303E.gpg \
+		/etc/apt/trusted.gpg.d/
 	apt-get $apt_opts update ||\
 		die "apt-get update failed"
 	if [ $opt_bit -eq 32 ]; then
 		apt-get $apt_opts install \
-			raspberrypi-archive-keyring \
 			raspbian-archive-keyring \
-			|| die "apt-get install archive-keyrings failed"
-	else
-		apt-get $apt_opts install \
-			raspberrypi-archive-keyring \
 			|| die "apt-get install archive-keyrings failed"
 	fi
 
@@ -536,6 +532,7 @@ EOF
 		debconf-utils \
 		debsums \
 		devscripts \
+		dh-python \
 		ethtool \
 		fdisk \
 		firmware-atheros \
