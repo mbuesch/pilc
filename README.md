@@ -5,6 +5,11 @@
 PiLC can be used to run a Raspberry Pi just like a "real" PLC.
 
 
+## Download PiLC SD card image
+
+Download the latest ready to use PiLC SD card image for the Rasperry Pi from [the PiLC download page](https://bues.ch/a/pilc#download).
+
+
 ## How to setup PiLC on the Raspberry Pi?
 
 Just copy the PiLC image file onto an SD card. The process of installing PiLC is exactly the same as installing the standard Raspbian distribution.
