@@ -707,6 +707,7 @@ EOF
 		       -e 's|AWLSIM_PRIO=|AWLSIM_PRIO=50|g' \
 		       -e 's|AWLSIM_AFFINITY=|AWLSIM_AFFINITY=-1,-2,-3|g' \
 		       -e 's|AWLSIM_MLOCK=|AWLSIM_MLOCK=1|g' \
+		       -e 's|Nice=.*$|Nice=-5|g' \
 		       awlsim-server.service ||\
 		       die "Failed to patch awlsim-server.service"
 
