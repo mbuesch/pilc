@@ -45,7 +45,7 @@ arm_64bit=0
 # GPU memory
 #gpu_mem=16
 
-#uncomment to overclock the arm. 700 MHz is the default.
+# Main processor clock frequency.
 #arm_freq=800
 
 # Uncomment some or all of these to enable the optional hardware interfaces
@@ -72,6 +72,15 @@ dtparam=audio=on
 # Enable DRM VC4 V3D driver on top of the dispmanx display stack
 dtoverlay=vc4-fkms-v3d
 max_framebuffers=2
+
+# Run as fast as firmware / board allows
+arm_boost=1
+
+[cm4]
+# Enable host mode on the 2711 built-in XHCI USB controller.
+# This line should be removed if the legacy DWC2 controller is required
+# (e.g. for USB device mode) or if USB support is not required.
+otg_mode=1
 
 [all]
 #dtoverlay=vc4-fkms-v3d
