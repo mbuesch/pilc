@@ -918,7 +918,9 @@ pilc_bootstrap_third_stage()
 			die "Failed to remove boot partition mount point."
 
 		info "Creating root image..."
-		mkfs.ext4 "$rootimgfile" $(expr \( "$imgsize_mib_red" - \( 256 + 4 + 4 \) \) \* 1024 ) ||\
+		mkfs.ext4 -O ^metadata_csum_seed \
+			"$rootimgfile" \
+			$(expr \( "$imgsize_mib_red" - \( 256 + 4 + 4 \) \) \* 1024 ) ||\
 			die "Failed to create root filesystem."
 		mkdir "$mp_rootimgfile" ||\
 			die "Failed to make root partition mount point."
