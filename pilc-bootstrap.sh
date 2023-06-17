@@ -249,7 +249,13 @@ pilc_bootstrap_first_stage()
 	[ "$(id -u)" = "0" ] || die "Permission denied. Must be root."
 
 	# Check host tools (first/third stage).
-	assert_program 7z
+	if have_program 7zz; then
+		SEVENZIP=7zz
+	elif have_program 7z; then
+		SEVENZIP=7z
+	else
+		die "7z not found. Please install 7z."
+	fi
 	assert_program chroot
 	assert_program dd
 	assert_program debootstrap
@@ -969,7 +975,7 @@ EOF
 		# Create zipped image.
 		if [ "$opt_zimg" -ne 0 ]; then
 			info "Compressing image..."
-			7z -mx=9 a "$imgfile_zip" "$imgfile" ||\
+			"$SEVENZIP" -mx=9 a "$imgfile_zip" "$imgfile" ||\
 				die "Failed to compress partition image."
 		fi
 
