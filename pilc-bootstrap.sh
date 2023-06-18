@@ -308,7 +308,6 @@ pilc_bootstrap_first_stage()
 		setarch "linux$opt_bit" \
 			debootstrap --arch="$arch" --foreign \
 			--components="main,contrib,non-free" \
-			--no-merged-usr \
 			$keyopt \
 			"$opt_suite" "$opt_target_dir" "$mirror" \
 			|| die "debootstrap failed"
