@@ -1,6 +1,6 @@
 # PiLC - The Raspberry Pi PLC
 
-[PiLC](https://bues.ch/a/pilc) is a [Raspbian](https://www.raspberrypi.org/) Operating System derivative that comes with [Awlsim](https://bues.ch/a/awlsim) preinstalled and ready-to-go.
+[PiLC](https://bues.ch/a/pilc) is a [Rapberry Pi OS](https://www.raspberrypi.org/) Operating System derivative that comes with [Awlsim](https://bues.ch/a/awlsim) preinstalled and ready-to-go.
 
 PiLC can be used to run a Raspberry Pi just like a "real" PLC.
 
