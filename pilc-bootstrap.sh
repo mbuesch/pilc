@@ -27,7 +27,7 @@ basedir="$(readlink -e "$basedir")"
 
 AWLSIM_MIRROR="https://git.bues.ch/git/awlsim.git"
 
-DEFAULT_SUITE=bullseye
+DEFAULT_SUITE=bookworm
 MAIN_MIRROR_32="http://mirrordirector.raspbian.org/raspbian/"
 MAIN_MIRROR_ARCHIVE="http://archive.raspberrypi.org/debian/"
 MAIN_MIRROR_64="http://deb.debian.org/debian/"
