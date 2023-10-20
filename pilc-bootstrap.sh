@@ -2,7 +2,7 @@
 #
 # PiLC bootstrap
 #
-# Copyright 2016-2021 Michael Buesch <m@bues.ch>
+# Copyright 2016-2023 Michael Büsch <m@bues.ch>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@ basedir="$(readlink -e "$basedir")"
 
 AWLSIM_MIRROR="https://git.bues.ch/git/awlsim.git"
 
-DEFAULT_SUITE=bookworm
-MAIN_MIRROR_32="http://mirrordirector.raspbian.org/raspbian/"
+SUITE=bookworm
+MAIN_MIRROR_32="http://raspbian.raspberrypi.com/raspbian/"
 MAIN_MIRROR_ARCHIVE="http://archive.raspberrypi.org/debian/"
 MAIN_MIRROR_64="http://deb.debian.org/debian/"
 MAIN_MIRROR_64_SECURITY="http://deb.debian.org/debian-security/"
@@ -309,7 +309,7 @@ pilc_bootstrap_first_stage()
 			debootstrap --arch="$arch" --foreign \
 			--components="main,contrib,non-free" \
 			$keyopt \
-			"$opt_suite" "$opt_target_dir" "$mirror" \
+			"$SUITE" "$opt_target_dir" "$mirror" \
 			|| die "debootstrap failed"
 	fi
 	[ -d "$opt_target_dir" ] ||\
@@ -478,18 +478,16 @@ pilc_bootstrap_second_stage()
 	local apt_opts="-y -o Acquire::Retries=3"
 	if [ $opt_bit -eq 32 ]; then
 		cat > /etc/apt/sources.list <<EOF
-deb $MAIN_MIRROR_32 $opt_suite main contrib non-free rpi firmware
-#deb-src $MAIN_MIRROR_32 $opt_suite main contrib non-free rpi firmware
+deb [ arch=armhf ] $MAIN_MIRROR_32 $SUITE main contrib non-free rpi
 EOF
 		[ $? -eq 0 ] || die "Failed to set sources.list"
+		dpkg --add-architecture arm64 ||\
+			die "dpkg --add-architecture failed"
 	else
 		cat > /etc/apt/sources.list <<EOF
-deb $MAIN_MIRROR_64 $opt_suite main contrib non-free
-#deb-src $MAIN_MIRROR_64 $opt_suite main contrib non-free
-deb $MAIN_MIRROR_64_SECURITY $opt_suite-security main contrib non-free
-#deb-src $MAIN_MIRROR_64_SECURITY $opt_suite-security main contrib non-free
-deb $MAIN_MIRROR_64 $opt_suite-updates main contrib non-free
-#deb-src $MAIN_MIRROR_64 $opt_suite-updates main contrib non-free
+deb $MAIN_MIRROR_64 $SUITE main contrib non-free
+deb $MAIN_MIRROR_64_SECURITY $SUITE-security main contrib non-free
+deb $MAIN_MIRROR_64 $SUITE-updates main contrib non-free
 EOF
 		[ $? -eq 0 ] || die "Failed to set sources.list"
 		dpkg --add-architecture armhf ||\
@@ -507,9 +505,8 @@ EOF
 		gnupg2 \
 		debian-keyring \
 		|| die "apt-get install keyrings failed"
-	cat >> /etc/apt/sources.list <<EOF
-deb $MAIN_MIRROR_ARCHIVE $opt_suite main
-#deb-src $MAIN_MIRROR_ARCHIVE $opt_suite main
+	cat > /etc/apt/sources.list.d/raspi.list <<EOF
+deb $MAIN_MIRROR_ARCHIVE $SUITE main
 EOF
 	[ $? -eq 0 ] || die "Failed to update sources.list"
 	do_install -o root -g root -m 644 \
@@ -615,20 +612,25 @@ EOF
 		/home/pi/.tmux.conf
 
 	info "Installing Raspberry Pi OS packages..."
+	if [ $opt_bit -eq 32 ]; then
+		local kernel_pkgs="linux-image-rpi-v6 linux-image-rpi-v7 linux-image-rpi-v7l linux-image-rpi-v8:arm64"
+	else
+		local kernel_pkgs="linux-image-rpi-v8"
+	fi
 	apt-get $apt_opts install \
+		$kernel_pkgs \
 		libraspberrypi-bin \
 		libraspberrypi-dev \
 		libraspberrypi-doc \
 		python3-rpi.gpio \
-		raspberrypi-bootloader \
-		raspberrypi-kernel \
 		raspberrypi-net-mods \
 		raspberrypi-sys-mods \
 		raspi-config \
+		raspi-firmware \
 		raspi-gpio \
-		raspinfo \
+		raspi-utils \
 		rpi-eeprom \
-		rpi-eeprom-images \
+		rpi-update \
 		|| die "apt-get install failed"
 
 	info "Removing unnecessary keys and repos..."
@@ -873,28 +875,32 @@ pilc_bootstrap_third_stage()
 	info "Cleaning tmp..."
 	rm -rf "$opt_target_dir"/tmp/*
 
-	info "Configuring boot..."
+	info "Configuring /boot/firmware..."
 	do_install -T -o root -g root -m 644 \
 		"$basedir/templates/boot_cmdline.txt" \
-		"$opt_target_dir/boot/cmdline.txt"
+		"$opt_target_dir/boot/firmware/cmdline.txt"
 	do_install -T -o root -g root -m 644 \
 		"$basedir/templates/boot_config.txt" \
-		"$opt_target_dir/boot/config.txt"
+		"$opt_target_dir/boot/firmware/config.txt"
+	ln -sf firmware/cmdline.txt "$opt_target_dir/boot/cmdline.txt" ||\
+		die "Failed to create cmdline.txt link."
+	ln -sf firmware/config.txt "$opt_target_dir/boot/config.txt" ||\
+		die "Failed to create config.txt link."
 	if [ $opt_bit -eq 64 ]; then
 		sed -i -e 's/arm_64bit=0/arm_64bit=1/g' \
-			"$opt_target_dir/boot/config.txt" ||\
+			"$opt_target_dir/boot/firmware/config.txt" ||\
 			die "Failed to set arm_64bit=1"
 	fi
 
 	# Prepare image paths.
 	local imgfile="${opt_target_dir}${opt_imgsuffix}.img"
 	local imgfile_zip="${imgfile}.7z"
-	local bootimgfile="${imgfile}.boot"
-	mp_bootimgfile="${bootimgfile}.mp"
+	local firmwareimgfile="${imgfile}.firmware"
+	mp_firmwareimgfile="${firmwareimgfile}.mp"
 	local rootimgfile="${imgfile}.root"
 	mp_rootimgfile="${rootimgfile}.mp"
-	rm -f "$imgfile" "$imgfile_zip" "$rootimgfile" "$bootimgfile"
-	rmdir "$mp_bootimgfile" "$mp_rootimgfile" 2>/dev/null
+	rm -f "$imgfile" "$imgfile_zip" "$rootimgfile" "$firmwareimgfile"
+	rmdir "$mp_firmwareimgfile" "$mp_rootimgfile" 2>/dev/null
 
 	# Create images.
 	if [ "$opt_img" -ne 0 ]; then
@@ -906,21 +912,21 @@ pilc_bootstrap_third_stage()
 		[ -n "$imgsize_mib_red" ] || die "Failed to calculate image size"
 		info "SD image size = $imgsize_mib_red MiB"
 
-		info "Creating boot image..."
-		mkfs.vfat -F 32 -i 7771B0BB -n boot -C "$bootimgfile" \
+		info "Creating /boot/firmware image..."
+		mkfs.vfat -F 32 -i 7771B0BB -n boot -C "$firmwareimgfile" \
 			$(expr \( 256 \* 1024 \) ) ||\
-			die "Failed to create boot partition file system."
-		mkdir "$mp_bootimgfile" ||\
-			die "Failed to make boot partition mount point."
-		mount -o loop "$bootimgfile" "$mp_bootimgfile" ||\
-			die "Failed to mount boot partition."
-		rsync -aHAX --inplace \
-			"$opt_target_dir/boot/" "$mp_bootimgfile/" ||\
-			die "Failed to copy boot files."
-		umount "$mp_bootimgfile" ||\
-			die "Failed to umount boot partition."
-		rmdir "$mp_bootimgfile" ||\
-			die "Failed to remove boot partition mount point."
+			die "Failed to create /boot/firmware partition file system."
+		mkdir "$mp_firmwareimgfile" ||\
+			die "Failed to make /boot/firmware partition mount point."
+		mount -o loop "$firmwareimgfile" "$mp_firmwareimgfile" ||\
+			die "Failed to mount /boot/firmware partition."
+		rsync -rt --inplace \
+			"$opt_target_dir/boot/firmware/" "$mp_firmwareimgfile/" ||\
+			die "Failed to copy /boot/firmware files."
+		umount "$mp_firmwareimgfile" ||\
+			die "Failed to umount /boot/firmware partition."
+		rmdir "$mp_firmwareimgfile" ||\
+			die "Failed to remove /boot/firmware partition mount point."
 
 		info "Creating root image..."
 		mkfs.ext4 -O ^metadata_csum_seed \
@@ -932,7 +938,7 @@ pilc_bootstrap_third_stage()
 		mount -o loop "$rootimgfile" "$mp_rootimgfile" ||\
 			die "Failed to mount root partition."
 		rsync -aHAX --inplace \
-			--exclude='boot/*' \
+			--exclude='boot/firmware/*' \
 			--exclude='dev/shm/*' \
 			--exclude='proc/*' \
 			--exclude='run/*' \
@@ -957,12 +963,12 @@ mkpart primary ext4 $(expr \( 256 + 4 + 4 \) \* 1024 \* 1024) 100%
 EOF
 		[ $? -eq 0 ] || die "Failed to create partitions."
 
-		info "Integrating boot image..."
-		dd if="$bootimgfile" of="$imgfile"\
+		info "Integrating /boot/firmware image..."
+		dd if="$firmwareimgfile" of="$imgfile"\
 			seek=4 bs=1M conv=notrunc,sparse ||\
-			die "Failed to integrate boot partition."
-		rm "$bootimgfile" ||\
-			die "Failed to delete boot partition image."
+			die "Failed to integrate /boot/firmware partition."
+		rm "$firmwareimgfile" ||\
+			die "Failed to delete /boot/firmware partition image."
 
 		info "Integrating root image..."
 		dd if="$rootimgfile" of="$imgfile"\
@@ -996,9 +1002,6 @@ usage()
 	echo
 	echo " --no-cython|-C          Do not build Cython modules."
 	echo "                         Default: Build cython modules"
-	echo
-	echo " --suite|-s SUITE        Select the suite."
-	echo "                         Default: $default_suite"
 	echo
 	echo " --bit|-B BIT            Build 32 bit or 64 bit image."
 	echo "                         Default: $default_bit"
@@ -1054,7 +1057,6 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 	[ -n "$_NPROCESSORS_ONLN" ] || die "Failed to get # of online CPUs"
 
 	default_branch="master"
-	default_suite="$DEFAULT_SUITE"
 	default_bit=32
 	default_qemu="/usr/bin/qemu-arm-static"
 	default_imgsuffix="-$(date '+%Y%m%d')"
@@ -1068,7 +1070,6 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 	opt_target_dir=
 	opt_branch="$default_branch"
 	opt_cython=1
-	opt_suite="$default_suite"
 	opt_bit="$default_bit"
 	opt_qemu="$default_qemu"
 	opt_skip_debootstrap1=0
@@ -1094,11 +1095,6 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 			;;
 		--no-cython|-C)
 			opt_cython=0
-			;;
-		--suite|-s)
-			shift
-			opt_suite="$1"
-			[ -n "$opt_suite" ] || die "No suite given"
 			;;
 		--bit|-B)
 			shift
@@ -1188,7 +1184,6 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 	export opt_target_dir
 	export opt_branch
 	export opt_cython
-	export opt_suite
 	export opt_bit
 	export opt_qemu
 	export opt_skip_debootstrap1
