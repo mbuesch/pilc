@@ -2,7 +2,7 @@
 #
 # PiLC bootstrap
 #
-# Copyright 2016-2023 Michael Büsch <m@bues.ch>
+# Copyright 2016-2024 Michael Büsch <m@bues.ch>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -619,7 +619,6 @@ EOF
 	fi
 	apt-get $apt_opts install \
 		$kernel_pkgs \
-		libraspberrypi-bin \
 		libraspberrypi-dev \
 		libraspberrypi-doc \
 		python3-rpi.gpio \
