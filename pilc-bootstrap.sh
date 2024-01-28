@@ -321,14 +321,8 @@ pilc_bootstrap_first_stage()
 		"$opt_target_dir/usr/sbin/"
 
 	# Copy qemu.
-	local qemu_bin="$opt_target_dir/$opt_qemu"
-	if ! [ -x "$qemu_bin" ]; then
-		info "Copying qemu binary from '$opt_qemu' to '$qemu_bin'..."
-		do_install -d -o root -g root -m 755 \
-			"$(dirname "$qemu_bin")"
-		do_install -T -o root -g root -m 755 \
-			"$opt_qemu" "$qemu_bin"
-	fi
+	info "Copying qemu binary from '$opt_qemu' into '$opt_target_dir/usr/bin/'..."
+	do_install -o root -g root -m 755 "$opt_qemu" "$opt_target_dir/usr/bin"
 
 	info "Copying PiLC bootstrap script and templates..."
 	do_install -o root -g root -m 755 \
