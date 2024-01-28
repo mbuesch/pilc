@@ -345,9 +345,12 @@ pilc_bootstrap_first_stage()
 			die "Failed to cd"
 		git checkout "$opt_branch" ||\
 			die "Failed to check out branch."
-		git submodule update --init submodules/pyprofibus ||\
+		git submodule update --init --recursive submodules/pyprofibus ||\
 			die "Failed to pull pyprofibus submodule"
-		rm -r .git submodules/pyprofibus/.git ||\
+		rm -r \
+			.git \
+			submodules/pyprofibus/.git \
+			submodules/pyprofibus/phy_fpga/crcgen/.git ||\
 			die "Failed to remove .git directory."
 		mv submodules/pyprofibus .. ||\
 			die "Failed to move pyprofibus submodule."
