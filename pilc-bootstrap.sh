@@ -396,6 +396,10 @@ pilc_bootstrap_second_stage()
 		info "Optimizing for RPi 4"
 		local march="-march=armv8-a"
 		local mtune="-mtune=cortex-a72"
+	elif [ "$opt_rpiver" = "5" ]; then
+		info "Optimizing for RPi 5"
+		local march="-march=armv8-a"
+		local mtune="-mtune=cortex-a76"
 	else
 		info "Optimizing for generic RPi"
 		if [ $opt_bit -eq 32 ]; then
@@ -1027,9 +1031,9 @@ usage()
 	echo "                         --no-cython --no-zimg"
 	echo
 	echo " --rpiver|-R VERSION     Raspberry Pi version to build for."
-	echo "                         Can be either 0, 1, 2, 3, 4 or generic"
+	echo "                         Can be either 0, 1, 2, 3, 4, 5 or generic"
 	echo "                         0 and 1 are equivalent."
-	echo "                         generic runs on any Raspberry Pi 0-4."
+	echo "                         generic runs on any Raspberry Pi 0-5."
 	echo "                         Default: generic"
 }
 
@@ -1146,7 +1150,8 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 			  "$opt_rpiver" = "1" -o\
 			  "$opt_rpiver" = "2" -o\
 			  "$opt_rpiver" = "3" -o\
-			  "$opt_rpiver" = "4" ] || die "Invalid --rpiver|-R"
+			  "$opt_rpiver" = "4" -o\
+			  "$opt_rpiver" = "5" ] || die "Invalid --rpiver|-R"
 			;;
 		*)
 			opt_target_dir="$*"
