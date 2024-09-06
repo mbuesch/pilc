@@ -1002,7 +1002,7 @@ usage()
 	echo " --bit|-B BIT            Build 32 bit or 64 bit image."
 	echo "                         Default: $default_bit"
 	echo
-	echo " --qemu-bin|-Q PATH      Select qemu-user-static binary."
+	echo " --qemu-bin|-Q PATH      Select qemu-user binary."
 	echo "                         Default: $default_qemu"
 	echo
 	echo " --img-suffix|-X SUFFIX  Image file suffix."
@@ -1054,7 +1054,11 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 
 	default_branch="master"
 	default_bit=32
-	default_qemu="/usr/bin/qemu-arm-static"
+	if [ -x "$(realpath /usr/bin/qemu-arm-static)" ]; then
+		default_qemu="$(realpath /usr/bin/qemu-arm-static)"
+	else
+		default_qemu="/usr/bin/qemu-arm"
+	fi
 	default_imgsuffix="-$(date '+%Y%m%d')"
 	default_imgsize=4
 	default_img=1
