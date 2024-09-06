@@ -19,11 +19,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
-basedir="$(dirname "$0")"
-[ "$(echo "$basedir" | cut -c1)" = '/' ] || basedir="$PWD/$basedir"
-basedir="$(readlink -e "$basedir")"
+basedir="$(realpath "$0" | xargs dirname)"
 [ -n "$basedir" ] || { echo "Failed to canonicalize base directory." >&2; exit 1; }
-
 
 AWLSIM_MIRROR="https://git.bues.ch/git/awlsim.git"
 
