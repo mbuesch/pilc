@@ -2,7 +2,7 @@
 #
 # PiLC bootstrap
 #
-# Copyright 2016-2024 Michael Büsch <m@bues.ch>
+# Copyright 2016-2026 Michael Büsch <m@bues.ch>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,16 +24,16 @@ basedir="$(realpath "$0" | xargs dirname)"
 
 AWLSIM_MIRROR="https://git.bues.ch/git/awlsim.git"
 
-SUITE=bookworm
+SUITE=trixie
 MAIN_MIRROR_32="http://raspbian.raspberrypi.com/raspbian/"
-MAIN_MIRROR_ARCHIVE="http://archive.raspberrypi.org/debian/"
-MAIN_MIRROR_64="http://deb.debian.org/debian/"
-MAIN_MIRROR_64_SECURITY="http://deb.debian.org/debian-security/"
+MAIN_MIRROR_ARCHIVE="https://archive.raspberrypi.org/debian/"
+MAIN_MIRROR_64="https://deb.debian.org/debian/"
+MAIN_MIRROR_64_SECURITY="https://deb.debian.org/debian-security/"
 
-KEYRING_VERSION="20120528.2"
+KEYRING_VERSION="20120528.4"
 KEYRING_BASEURL="$MAIN_MIRROR_32/pool/main/r/raspbian-archive-keyring"
 KEYRING_TGZ_FILE="raspbian-archive-keyring_${KEYRING_VERSION}.tar.gz"
-KEYRING_TGZ_SHA256="fdf50f775b60901a2783f21a6362e2bf5ee6203983e884940b163faa1293c002"
+KEYRING_TGZ_SHA256="de3aab3eb74e8396cfd62c3a9103e0504f4a9b88146549bbceb32c2e37d4db37"
 
 PPL_VERSION="0.1.1"
 PPL_FILE="ppl_v$PPL_VERSION.zip"
@@ -276,7 +276,7 @@ pilc_bootstrap_first_stage()
 
 	info "Downloading and extracting keys..."
 	do_install -o root -g root -m 644 \
-		"$basedir/keys/CF8A1AF502A2AA2D763BAE7E82B129927FA3303E.gpg" \
+		"$basedir/keys/raspberrypi-archive-keyring.gpg" \
 		"$opt_target_dir/tmp/"
 	if [ $opt_bit -eq 32 ]; then
 		download "$opt_target_dir/tmp/$KEYRING_TGZ_FILE" \
@@ -284,10 +284,7 @@ pilc_bootstrap_first_stage()
 			 "$KEYRING_TGZ_SHA256"
 		tar -C "$opt_target_dir/tmp" -x -f "$opt_target_dir/tmp/$KEYRING_TGZ_FILE" ||\
 			die "Failed to extract keys."
-		local raspbian_asc="$opt_target_dir/tmp/raspbian-archive-keyring-$KEYRING_VERSION/raspbian.public.key"
-		local raspbian_gpg="$raspbian_asc.gpg"
-		gpg --dearmor < "$raspbian_asc" > "$raspbian_gpg" ||\
-			die "Failed to convert key."
+		local raspbian_gpg="$opt_target_dir/tmp/raspbian-archive-keyring-$KEYRING_VERSION+rpi1/keyrings/raspbian-archive-keyring.gpg"
 	fi
 
 	# debootstrap first stage.
@@ -475,43 +472,82 @@ pilc_bootstrap_second_stage()
 	info "Writing apt configuration..."
 	local apt_opts="-y -o Acquire::Retries=3"
 	if [ $opt_bit -eq 32 ]; then
-		cat > /etc/apt/sources.list <<EOF
-deb [ arch=armhf ] $MAIN_MIRROR_32 $SUITE main contrib non-free rpi
+		mkdir -p /etc/crypto-policies/back-ends ||\
+			die "Failed to create /etc/crypto-policies/back-ends"
+		cat > /etc/crypto-policies/back-ends/sequoia.config <<EOF
+[hash_algorithms]
+# Allow SHA-1 debs
+sha1 = "always"
 EOF
-		[ $? -eq 0 ] || die "Failed to set sources.list"
+		[ $? -eq 0 ] || die "Failed to write crypto-policies config"
+		cat > /etc/apt/sources.list.d/main.sources <<EOF
+Types: deb
+URIs: $MAIN_MIRROR_32
+Suites: $SUITE
+Components: main contrib non-free rpi
+Enabled: Yes
+Signed-By: /usr/share/keyrings/raspbian-archive-keyring.gpg
+Architectures: armhf
+EOF
+		[ $? -eq 0 ] || die "Failed to set main.sources"
 		dpkg --add-architecture arm64 ||\
 			die "dpkg --add-architecture failed"
 	else
-		cat > /etc/apt/sources.list <<EOF
-deb $MAIN_MIRROR_64 $SUITE main contrib non-free
-deb $MAIN_MIRROR_64_SECURITY $SUITE-security main contrib non-free
-deb $MAIN_MIRROR_64 $SUITE-updates main contrib non-free
+		cat > /etc/apt/sources.list.d/main.sources <<EOF
+Types: deb
+URIs: $MAIN_MIRROR_64
+Suites: $SUITE
+Components: main contrib non-free
+Enabled: Yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: $MAIN_MIRROR_64_SECURITY
+Suites: $SUITE-security
+Components: main contrib non-free
+Enabled: Yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: $MAIN_MIRROR_64
+Suites: $SUITE-updates
+Components: main contrib non-free
+Enabled: Yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 EOF
-		[ $? -eq 0 ] || die "Failed to set sources.list"
+		[ $? -eq 0 ] || die "Failed to set main.sources"
 		dpkg --add-architecture armhf ||\
 			die "dpkg --add-architecture failed"
 	fi
+	rm -f /etc/apt/sources.list ||\
+		die "Failed to remove /etc/apt/sources.list"
 	echo 'Acquire { Languages "none"; };' > /etc/apt/apt.conf.d/99no-translations ||\
 		die "Failed to set apt.conf.d"
 	cat /tmp/templates/debconf-set-selections-preinstall.conf | debconf-set-selections ||\
 		die "Failed to configure debconf settings"
 	apt-get $apt_opts update ||\
-		die "apt-get update failed"
+		die "apt-get update failed (1)"
 	apt-get $apt_opts install apt-transport-https ||\
 		die "apt-get install apt-transport-https failed"
 	apt-get $apt_opts install \
-		gnupg2 \
+		ca-certificates \
 		debian-keyring \
+		gnupg2 \
 		|| die "apt-get install keyrings failed"
-	cat > /etc/apt/sources.list.d/raspi.list <<EOF
-deb $MAIN_MIRROR_ARCHIVE $SUITE main
+	cat > /etc/apt/sources.list.d/raspi.sources <<EOF
+Types: deb
+URIs: $MAIN_MIRROR_ARCHIVE
+Suites: $SUITE
+Components: main
+Enabled: Yes
+Signed-By: /etc/apt/trusted.gpg.d/raspberrypi-archive-keyring.gpg
 EOF
-	[ $? -eq 0 ] || die "Failed to update sources.list"
+	[ $? -eq 0 ] || die "Failed to update raspi.sources"
 	do_install -o root -g root -m 644 \
-		/tmp/CF8A1AF502A2AA2D763BAE7E82B129927FA3303E.gpg \
+		/tmp/raspberrypi-archive-keyring.gpg \
 		/etc/apt/trusted.gpg.d/
 	apt-get $apt_opts update ||\
-		die "apt-get update failed"
+		die "apt-get update failed (2)"
 	if [ $opt_bit -eq 32 ]; then
 		apt-get $apt_opts install \
 			raspbian-archive-keyring \
@@ -551,7 +587,6 @@ EOF
 		iw \
 		locales \
 		nano \
-		ntp \
 		openssh-server \
 		parted \
 		python3 \
@@ -564,6 +599,7 @@ EOF
 		schedtool \
 		sudo \
 		systemd \
+		systemd-timesyncd \
 		tmux \
 		vim \
 		wireless-tools \
@@ -611,20 +647,17 @@ EOF
 
 	info "Installing Raspberry Pi OS packages..."
 	if [ $opt_bit -eq 32 ]; then
-		local kernel_pkgs="linux-image-rpi-v6 linux-image-rpi-v7 linux-image-rpi-v7l linux-image-rpi-v8:arm64"
+		local kernel_pkgs="linux-image-rpi-v6 linux-image-rpi-v7 linux-image-rpi-v8-rt:arm64"
 	else
 		local kernel_pkgs="linux-image-rpi-v8"
 	fi
 	apt-get $apt_opts install \
 		$kernel_pkgs \
-		libraspberrypi-dev \
-		libraspberrypi-doc \
 		python3-rpi.gpio \
 		raspberrypi-net-mods \
 		raspberrypi-sys-mods \
 		raspi-config \
 		raspi-firmware \
-		raspi-gpio \
 		raspi-utils \
 		rpi-eeprom \
 		rpi-update \
@@ -647,7 +680,7 @@ EOF
 		fi
 	done
 	apt-get $apt_opts update ||\
-		die "apt-get update failed"
+		die "apt-get update failed (3)"
 
 	info "Running debconf-set-selections..."
 	cat /tmp/templates/debconf-set-selections-postinstall.conf | debconf-set-selections ||\
