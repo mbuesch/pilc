@@ -5,6 +5,9 @@
 # 64-bit system?
 arm_64bit=0
 
+# RT kernel? (requires arm_64bit=1)
+#kernel=kernel8_rt.img
+
 # uncomment if you get no picture on HDMI for a default "safe" mode
 #hdmi_safe=1
 
