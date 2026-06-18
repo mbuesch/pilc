@@ -1026,8 +1026,11 @@ usage()
 	echo " --no-cython|-C          Do not build Cython modules."
 	echo "                         Default: Build cython modules"
 	echo
-	echo " --bit|-B BIT            Build 32 bit or 64 bit image."
-	echo "                         Default: $default_bit"
+	echo " --32                    Build 32 bit image."
+	echo "                         Default: --$default_bit"
+	echo
+	echo " --64                    Build 64 bit image."
+	echo "                         Default: --$default_bit"
 	echo
 	echo " --qemu-bin|-Q PATH      Select qemu-user binary."
 	echo "                         Default: $default_qemu"
@@ -1123,10 +1126,11 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 		--no-cython|-C)
 			opt_cython=0
 			;;
-		--bit|-B)
-			shift
-			opt_bit="$1"
-			[ "$opt_bit" = "32" -o "$opt_bit" = "64" ] || die "Invalid --bit. Must be 32 or 64."
+		--32)
+			opt_bit=32
+			;;
+		--64)
+			opt_bit=64
 			;;
 		--qemu-bin|-Q)
 			shift
