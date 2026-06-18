@@ -472,14 +472,6 @@ pilc_bootstrap_second_stage()
 	info "Writing apt configuration..."
 	local apt_opts="-y -o Acquire::Retries=3"
 	if [ $opt_bit -eq 32 ]; then
-		mkdir -p /etc/crypto-policies/back-ends ||\
-			die "Failed to create /etc/crypto-policies/back-ends"
-		cat > /etc/crypto-policies/back-ends/sequoia.config <<EOF
-[hash_algorithms]
-# Allow SHA-1 debs
-sha1 = "always"
-EOF
-		[ $? -eq 0 ] || die "Failed to write crypto-policies config"
 		cat > /etc/apt/sources.list.d/main.sources <<EOF
 Types: deb
 URIs: $MAIN_MIRROR_32
