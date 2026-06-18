@@ -593,7 +593,6 @@ EOF
 		systemd-timesyncd \
 		tmux \
 		vim \
-		wireless-tools \
 		wpasupplicant \
 		|| die "apt-get install failed"
 
