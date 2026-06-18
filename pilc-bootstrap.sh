@@ -45,6 +45,41 @@ PPL2_FILE="pplv2_v$PPL2_VERSION.zip"
 PPL2_PATH="libs/pixtend/v2/pplv2/$PPL2_FILE"
 PPL2_SHA256="4c379e15c6536b67b3eb36b79946a52e57aa79681265e6d46104e07987147bf1"
 
+APT_MAIN_SOURCES_32="Types: deb
+URIs: $MAIN_MIRROR_32
+Suites: $SUITE
+Components: main contrib non-free rpi
+Enabled: Yes
+Signed-By: /usr/share/keyrings/raspbian-archive-keyring.gpg
+Architectures: armhf"
+
+APT_MAIN_SOURCES_64="Types: deb
+URIs: $MAIN_MIRROR_64
+Suites: $SUITE
+Components: main contrib non-free
+Enabled: Yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: $MAIN_MIRROR_64_SECURITY
+Suites: $SUITE-security
+Components: main contrib non-free
+Enabled: Yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: $MAIN_MIRROR_64
+Suites: $SUITE-updates
+Components: main contrib non-free
+Enabled: Yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg"
+
+APT_RASPI_SOURCES="Types: deb
+URIs: $MAIN_MIRROR_ARCHIVE
+Suites: $SUITE
+Components: main
+Enabled: Yes
+Signed-By: /etc/apt/trusted.gpg.d/raspberrypi-archive-keyring.gpg"
 
 info()
 {
@@ -472,42 +507,13 @@ pilc_bootstrap_second_stage()
 	info "Writing apt configuration..."
 	local apt_opts="-y -o Acquire::Retries=3"
 	if [ $opt_bit -eq 32 ]; then
-		cat > /etc/apt/sources.list.d/main.sources <<EOF
-Types: deb
-URIs: $MAIN_MIRROR_32
-Suites: $SUITE
-Components: main contrib non-free rpi
-Enabled: Yes
-Signed-By: /usr/share/keyrings/raspbian-archive-keyring.gpg
-Architectures: armhf
-EOF
-		[ $? -eq 0 ] || die "Failed to set main.sources"
+		echo "$APT_MAIN_SOURCES_32" > /etc/apt/sources.list.d/main.sources ||\
+			die "Failed to set main.sources"
 		dpkg --add-architecture arm64 ||\
 			die "dpkg --add-architecture failed"
 	else
-		cat > /etc/apt/sources.list.d/main.sources <<EOF
-Types: deb
-URIs: $MAIN_MIRROR_64
-Suites: $SUITE
-Components: main contrib non-free
-Enabled: Yes
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-
-Types: deb
-URIs: $MAIN_MIRROR_64_SECURITY
-Suites: $SUITE-security
-Components: main contrib non-free
-Enabled: Yes
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-
-Types: deb
-URIs: $MAIN_MIRROR_64
-Suites: $SUITE-updates
-Components: main contrib non-free
-Enabled: Yes
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-EOF
-		[ $? -eq 0 ] || die "Failed to set main.sources"
+		echo "$APT_MAIN_SOURCES_64" > /etc/apt/sources.list.d/main.sources ||\
+			die "Failed to set main.sources"
 		dpkg --add-architecture armhf ||\
 			die "dpkg --add-architecture failed"
 	fi
@@ -526,15 +532,8 @@ EOF
 		debian-keyring \
 		gnupg2 \
 		|| die "apt-get install keyrings failed"
-	cat > /etc/apt/sources.list.d/raspi.sources <<EOF
-Types: deb
-URIs: $MAIN_MIRROR_ARCHIVE
-Suites: $SUITE
-Components: main
-Enabled: Yes
-Signed-By: /etc/apt/trusted.gpg.d/raspberrypi-archive-keyring.gpg
-EOF
-	[ $? -eq 0 ] || die "Failed to update raspi.sources"
+	echo "$APT_RASPI_SOURCES" > /etc/apt/sources.list.d/raspi.sources ||
+		die "Failed to update raspi.sources"
 	do_install -o root -g root -m 644 \
 		/tmp/raspberrypi-archive-keyring.gpg \
 		/etc/apt/trusted.gpg.d/
