@@ -647,9 +647,9 @@ EOF
 
 	info "Installing Raspberry Pi OS packages..."
 	if [ $opt_bit -eq 32 ]; then
-		local kernel_pkgs="linux-image-rpi-v6 linux-image-rpi-v7 linux-image-rpi-v8-rt:arm64"
+		local kernel_pkgs="linux-image-rpi-v6 linux-image-rpi-v7 linux-image-rpi-v8:arm64 linux-image-rpi-v8-rt:arm64 linux-image-rpi-2712:arm64"
 	else
-		local kernel_pkgs="linux-image-rpi-v8"
+		local kernel_pkgs="linux-image-rpi-v8 linux-image-rpi-v8-rt linux-image-rpi-2712"
 	fi
 	apt-get $apt_opts install \
 		$kernel_pkgs \
@@ -941,10 +941,12 @@ pilc_bootstrap_third_stage()
 		local imgsize_mib_red="$(expr \( "$imgsize_mib" \* 98 \) \/ 100)"
 		[ -n "$imgsize_mib_red" ] || die "Failed to calculate image size"
 		info "SD image size = $imgsize_mib_red MiB"
+		# Boot partition size, in MiB.
+		local bootsize_mib=256
 
 		info "Creating /boot/firmware image..."
 		mkfs.vfat -F 32 -i 7771B0BB -n boot -C "$firmwareimgfile" \
-			$(expr \( 256 \* 1024 \) ) ||\
+			$(expr \( "$bootsize_mib" \* 1024 \) ) ||\
 			die "Failed to create /boot/firmware partition file system."
 		mkdir "$mp_firmwareimgfile" ||\
 			die "Failed to make /boot/firmware partition mount point."
@@ -961,7 +963,7 @@ pilc_bootstrap_third_stage()
 		info "Creating root image..."
 		mkfs.ext4 -O ^metadata_csum_seed \
 			"$rootimgfile" \
-			$(expr \( "$imgsize_mib_red" - \( 256 + 4 + 4 \) \) \* 1024 ) ||\
+			$(expr \( "$imgsize_mib_red" - \( "$bootsize_mib" + 4 + 4 \) \) \* 1024 ) ||\
 			die "Failed to create root filesystem."
 		mkdir "$mp_rootimgfile" ||\
 			die "Failed to make root partition mount point."
@@ -988,8 +990,8 @@ pilc_bootstrap_third_stage()
 		parted "$imgfile" <<EOF
 unit b
 mklabel msdos
-mkpart primary fat32 $(expr 4 \* 1024 \* 1024) $(expr \( 256 + 4 \) \* 1024 \* 1024)
-mkpart primary ext4 $(expr \( 256 + 4 + 4 \) \* 1024 \* 1024) 100%
+mkpart primary fat32 $(expr 4 \* 1024 \* 1024) $(expr \( "$bootsize_mib" + 4 \) \* 1024 \* 1024)
+mkpart primary ext4 $(expr \( "$bootsize_mib" + 4 + 4 \) \* 1024 \* 1024) 100%
 EOF
 		[ $? -eq 0 ] || die "Failed to create partitions."
 
@@ -1002,7 +1004,7 @@ EOF
 
 		info "Integrating root image..."
 		dd if="$rootimgfile" of="$imgfile"\
-			seek="$(expr 256 + 4 + 4)" bs=1M conv=notrunc,sparse ||\
+			seek="$(expr "$bootsize_mib" + 4 + 4)" bs=1M conv=notrunc,sparse ||\
 			die "Failed to integrate root partition."
 		rm "$rootimgfile" ||\
 			die "Failed to delete root partition image."
