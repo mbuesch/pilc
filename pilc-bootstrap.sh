@@ -1090,7 +1090,7 @@ if [ -z "$__PILC_BOOTSTRAP_SECOND_STAGE__" ]; then
 	[ -n "$_NPROCESSORS_ONLN" ] || die "Failed to get # of online CPUs"
 
 	default_branch="master"
-	default_bit=32
+	default_bit=64
 	if [ -x "$(realpath /usr/bin/qemu-arm-static)" ]; then
 		default_qemu="$(realpath /usr/bin/qemu-arm-static)"
 	else
