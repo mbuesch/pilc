@@ -597,7 +597,6 @@ EOF
 		python3-spidev \
 		rng-tools \
 		schedtool \
-		sudo \
 		systemd \
 		systemd-timesyncd \
 		tmux \
@@ -635,6 +634,8 @@ EOF
 		die "Failed to create user pi."
 	printf 'raspberry\nraspberry\n' | passwd pi ||\
 		die "Failed to set 'pi' password."
+	printf 'raspberry\nraspberry\n' | passwd root ||\
+		die "Failed to set 'root' password."
 
 	info "Initializing home directory..."
 	do_install -d -o pi -g pi -m 755 /home/pi/.vim
