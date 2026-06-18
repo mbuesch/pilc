@@ -547,7 +547,7 @@ pilc_bootstrap_second_stage()
 
 	info "Upgrading system..."
 	apt-get $apt_opts dist-upgrade ||\
-		die "apt-get dist-upgrade failed"
+		die "apt-get dist-upgrade failed (1)"
 
 	info "Installing packages..."
 	apt-get $apt_opts install \
@@ -672,6 +672,8 @@ pilc_bootstrap_second_stage()
 	done
 	apt-get $apt_opts update ||\
 		die "apt-get update failed (3)"
+	apt-get $apt_opts dist-upgrade ||\
+		die "apt-get dist-upgrade failed (2)"
 
 	info "Running debconf-set-selections..."
 	cat /tmp/templates/debconf-set-selections-postinstall.conf | debconf-set-selections ||\
@@ -857,7 +859,7 @@ pilc_bootstrap_second_stage()
 	info "Updating home directory permissions..."
 	chown -R pi:pi /home/pi || die "Failed to change /home/pi permissions."
 
-	# Remove rc.d policy file
+	info "Removing rc.d policy file..."
 	if [ -e /usr/sbin/policy-rc.d ]; then
 		rm /usr/sbin/policy-rc.d ||\
 			die "Failed to remove policy-rc.d"
