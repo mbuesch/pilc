@@ -1064,7 +1064,8 @@ usage()
 	echo " --rpiver|-R VERSION     Raspberry Pi version to build for."
 	echo "                         Can be either 0, 1, 2, 3, 4, 5 or generic"
 	echo "                         0 and 1 are equivalent."
-	echo "                         generic runs on any Raspberry Pi 0-5."
+	echo "                         if --32: generic runs on any Raspberry Pi 0-5."
+	echo "                         if --64: generic runs on any Raspberry Pi 3-5."
 	echo "                         Default: generic"
 }
 
