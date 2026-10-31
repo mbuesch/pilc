@@ -1,1 +1,5 @@
+/pilc32-*.img*
+/pilc32/
+/pilc64-*.img*
+/pilc64/
 build*
