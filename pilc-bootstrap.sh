@@ -696,6 +696,7 @@ pilc_bootstrap_second_stage()
 	do_systemctl mask alsa-state.service
 	do_systemctl mask alsa-restore.service
 	do_systemctl mask alsa-utils.service
+	do_systemctl mask ModemManager.service
 
 	info "Building and installing PiLC system package..."
 	(
