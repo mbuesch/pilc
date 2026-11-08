@@ -31,24 +31,28 @@ There is no need to set up anything else. The PiLC image is pre-configured so th
 
 1. Then connect to the PiLC by clicking `CPU` and then `Go online (Connect to a CPU)` in the menu bar.
 
-1. Enter the IP address of your Raspberry Pi here:<br />
-   <a href="doc/pic/connection0.png"><img src="doc/pic/connection0.png" alt="awlsim-gui" /></a>
+1. Enter the IP address of your Raspberry Pi here:
+
+   ![img connection0](doc/pic/connection0.png)
 
 1. Then click `Accept`.
 
-1. If Awlsim asks you to confirm the connection authentication, click `Yes`:<br />
-   <a href="doc/pic/connection1.png"><img src="doc/pic/connection1.png" alt="awlsim-gui" /></a>
+1. If Awlsim asks you to confirm the connection authentication, click `Yes`:
 
-1. Finally type in the Raspberry Pi login password. The default password is `raspberry`<br />
-   <a href="doc/pic/connection2.png"><img src="doc/pic/connection2.png" alt="awlsim-gui" /></a>
+   ![img connection1](doc/pic/connection1.png)
+
+1. Finally type in the Raspberry Pi login password. The default password is `raspberry`
+
+   ![img connection2](doc/pic/connection2.png)
 
 
 ## Connection failure
 
-If the connection fails with the following error message, it might be due to a failed SSH authentication:<br />
-<a href="doc/pic/connection3.png"><img src="doc/pic/connection3.png" alt="awlsim-gui" /></a>
+If the connection fails with the following error message, it might be due to a failed SSH authentication:
 
-This will happen, if you re-install PiLC on the Raspberry Pi.<br />
+![img connection3](doc/pic/connection3.png)
+
+This will happen, if you re-install PiLC on the Raspberry Pi.
 Re-installing PiLC generates new SSH keys and therefore causes subsequent authentications to fail.
 
 To fix this delete the SSH authentication (`known_hosts` entry) on the PC (*not* on the Raspberry Pi).
@@ -61,8 +65,9 @@ Replace `192.168.0.10` with the IP address of your Raspberry Pi.
 
 ## How do I get my PLC program onto PiLC?
 
-Just connect to PiLC (see previous chapter) and click the `download` button in the Awlsim GUI. This will transfer the program over to the PiLC.<br />
-<a href="doc/pic/download.png"><img src="doc/pic/download.png" alt="awlsim-gui" /></a>
+Just connect to PiLC (see previous chapter) and click the `download` button in the Awlsim GUI. This will transfer the program over to the PiLC.
+
+![img download](doc/pic/download.png)
 
 If the PiLC is not in RUN state, click the RUN button to start the program.
 
